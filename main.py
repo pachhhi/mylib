@@ -28,25 +28,28 @@ conn.close()
 
 
 def searchlib(title):
-    url = f"https://openlibrary.org/search.json?q={title.replace(' ', '+')}&limit=1"
+    url = f"https://openlibrary.org/search.json?q={title.replace(' ', '+')}&limit=5"
     res = req.get(url)
     data = res.json()
 
     if data["numFound"] > 0:
-        lib = data["docs"][0]
-        cover_id = lib.get("cover_i")
-        cover = f"https://openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else "Sin Portada"
+        books = []
+        for lib in data["docs"]:
+            cover_id = lib.get("cover_i")
+            cover = f"https://openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else "Sin Portada"
     
-        complete = {
-            "Title": lib.get("title"),
-            "Author": lib.get("author_name", [0]),
-            "Date": lib.get("first_publish_year"),
-            "Cover": cover
-            }
-        return complete
-    else:
-        return {"error": "Book not found"}
+            complete = {
+                "Title": lib.get("title"),
+                "Author": lib.get("author_name", [0]),
+                "Date": lib.get("first_publish_year"),
+                "Cover": cover
+                }
+            books.append(complete)
+            print(complete)
 
+        return books
+    else:
+            return {"error": "Book not found"}
 
 def addBook(book):
         print(f"{GREEN}Adding book...{RESET}")
@@ -76,11 +79,21 @@ def loadBooks():
     else:
         print(f"{RED}No books saved yet!{RESET}")
 
+def delBook(bookId):
+    conn = sqlite3.connect("books.db")
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM books WHERE id = ?",(bookId,))
+    conn.commit()
+    print(f"{RED}Book removed...{RESET}")
+
+    conn.close()
+
 while True:
     questions = [
         inquirer.List('action',
                     message= f"{GREEN}What do you want do?{RESET}",
-                    choices=['1. Search a Book', '2. View my books', '3. Exit'],
+                    choices=['1. Search a Book', '2. View my books', '3. Remove a Book','4. Exit'],
                     ),
             ]
     action = inquirer.prompt(questions)
@@ -98,7 +111,8 @@ while True:
                         ]
         saveAction = inquirer.prompt(questions)
         if saveAction['save'] == '1. Yes ':
-            addBook(result)
+            x = int(input(f"{RED}Which?: "))
+            addBook(result[x])
         else: 
             print("Not Saved")
 
@@ -107,7 +121,11 @@ while True:
         print(f"{GREEN}Your books: {RESET}")
         loadBooks()
 
-    elif action['action'] == '3. Exit':
+    elif action['action'] == '3. Remove a Book':
+        bookId = int(input(f"{RED}Enter the ID of the book you want delete: {GREEN}"))
+        delBook(bookId)
+
+    elif action['action'] == '4. Exit':
         exit(1)
 
 
